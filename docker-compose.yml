@@ -1,39 +1,42 @@
-version: '2'
-volumes:
-  app:
-  db:
-services:
-  app:
-    container_name: gitea-app
-    restart: always
-    image: gitea/gitea:${GITEA_VERSION}
-    links:
-      - db:mysql
-    volumes:
-      - ./volumes/gitea_app:/data
-    ports:
-      - "${GITEA_SSH_PORT}:22"
-      - "${GITEA_WEB_PORT}:3000"
-    environment:
-      - VIRTUAL_PORT=3000
-      - VIRTUAL_HOST=${GITEA_HOSTNAME}
-    networks:
-      - backend
-      - frontend
-  db:
-    container_name: gitea-db
-    restart: always
-    image: mysql:5.6
-    volumes:
-      - ./volumes/gitea_db:/var/lib/mysql
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-    networks:
-      - backend
+version: "2"
 
 networks:
-  frontend:
-  backend:
+  gitea:
+    external: false
+
+services:
+  server:
+    image: gitea/gitea:latest
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - DB_TYPE=postgres
+      - DB_HOST=db:5432
+      - DB_NAME=gitea
+      - DB_USER=gitea
+      - DB_PASSWD=${DB_PASSWORD}
+      - LOCAL_ROOT_URL=${LOCAL_ROOT_URL}
+    restart: always
+    networks:
+      - gitea
+    volumes:
+      - ./gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    depends_on:
+      - db
+ 
+    db:
+      image: postgres:9.6
+      restart: always
+      environment:
+        - POSTGRES_USER=gitea
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+        - POSTGRES_DB=gitea
+      networks:
+        - gitea
+      volumes:
+        - ./postgres:/var/lib/postgresql/data
